@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -13,7 +14,7 @@ namespace TicTacToe_C_
     };
 
         static string[] playerNames = new string[2];
-        static char currentPlayer = 'X';
+        static char activePlayer = 'X';
 
         static void Main()
         {
@@ -28,13 +29,15 @@ namespace TicTacToe_C_
             do
             {
                 bool gameOver = false;
-                int k = 1;
+                //uncomment to implement 3rd move win cheat
+                //int k = 1;
                 do
                 {
                     Console.Clear();
                     DrawBoard();
                     MakeMove();
 
+                    //uncomment to implement 3rd move win cheat
                     /*if (k++ == 3)
                     {
                         for (int i = 0; i < 3; i++)
@@ -55,8 +58,8 @@ namespace TicTacToe_C_
 
                         if (CheckWin())
                         {
-                            Console.WriteLine($"{playerNames[currentPlayer == 'X' ? 0 : 1]} wins!");
-                            UpdateWinHistory(playerNames[0], playerNames[1], playerNames[currentPlayer == 'X' ? 0 : 1]);
+                            Console.WriteLine($"{playerNames[activePlayer == 'X' ? 0 : 1]} wins!");
+                            UpdateWinHistory(playerNames[0], playerNames[1], playerNames[activePlayer == 'X' ? 0 : 1]);
                         }
 
                         else
@@ -64,11 +67,11 @@ namespace TicTacToe_C_
                     }
 
                     // Switch players
-                    currentPlayer = (currentPlayer == 'X') ? 'O' : 'X';
+                    activePlayer = (activePlayer == 'X') ? 'O' : 'X';
 
                 } while (!gameOver);
                 Console.WriteLine("Game Over!");
-
+                ShowLeaderboard();
                 //Console.ReadLine();
 
                 // Ask if the players want to play again
@@ -79,11 +82,10 @@ namespace TicTacToe_C_
                     playAgain = false;
 
                 // Reset the board for a new game
-                InitializeBoard();
-                currentPlayer = 'X';
+                ClearBoard();
+                activePlayer = 'X';
 
             } while (playAgain);
-
         }
 
         static void DrawBoard()
@@ -105,7 +107,7 @@ namespace TicTacToe_C_
                 int row = -1;
                 int col = -1;
 
-                Console.WriteLine($"{playerNames[currentPlayer == 'X' ? 0 : 1]}'s turn ({currentPlayer}):");
+                Console.WriteLine($"{playerNames[activePlayer == 'X' ? 0 : 1]}'s turn ({activePlayer}):");
                 do
                 {
                     Console.Write("Enter row (0, 1, or 2): ");
@@ -140,7 +142,7 @@ namespace TicTacToe_C_
 
                 if (board[row, col] == ' ')
                 {
-                    board[row, col] = currentPlayer;
+                    board[row, col] = activePlayer;
                     validMove = true;
                 }
                 else
@@ -157,16 +159,16 @@ namespace TicTacToe_C_
             for (int i = 0; i <= 2; i++)
             {
                 //check each row and if any row has the same value in all cells return true
-                if (board[i, 0] == currentPlayer && board[i, 1] == currentPlayer && board[i, 2] == currentPlayer)
+                if (board[i, 0] == activePlayer && board[i, 1] == activePlayer && board[i, 2] == activePlayer)
                     return true;
                 //check each column and if any column has the same value in all cells return true
-                if (board[0, i] == currentPlayer && board[1, i] == currentPlayer && board[2, i] == currentPlayer)
+                if (board[0, i] == activePlayer && board[1, i] == activePlayer && board[2, i] == activePlayer)
                     return true;
             }
 
             //check to see if either diagonal has the same value in all cells and return true if it does
-            if ((board[0, 0] == currentPlayer && board[1, 1] == currentPlayer && board[2, 2] == currentPlayer) ||
-                (board[0, 2] == currentPlayer && board[1, 1] == currentPlayer && board[2, 0] == currentPlayer))
+            if ((board[0, 0] == activePlayer && board[1, 1] == activePlayer && board[2, 2] == activePlayer) ||
+                (board[0, 2] == activePlayer && board[1, 1] == activePlayer && board[2, 0] == activePlayer))
                 return true;
 
             return false;
@@ -186,7 +188,7 @@ namespace TicTacToe_C_
             return true;
         }
 
-        static void InitializeBoard()
+        static void ClearBoard()
         {
             // Clear the board for a new game
             for (int i = 0; i < 3; i++)
@@ -204,39 +206,96 @@ namespace TicTacToe_C_
             bool newWinner = true;
             string winHistoryFilePath = "win_history.csv";
 
-            // Read all lines from the CSV file
-            string[] lines = File.ReadAllLines(winHistoryFilePath);
-
-            // Find winner's record (if exists)
-            for (int i = 0; i < lines.Length; i++)
+            if (File.Exists(winHistoryFilePath))
             {
-                if (lines[i].StartsWith(winner + ","))
+                // Read all lines from the CSV file
+                string[] lines = File.ReadAllLines(winHistoryFilePath);
+
+                // Find winner's record (if exists)
+                for (int i = 0; i < lines.Length; i++)
                 {
-                    newWinner = false;
-                    string[] values = lines[i].Split(',');
-                    try
+                    if (lines[i].StartsWith(winner + ","))
                     {
-                        winnersWins = int.Parse(values[1]);
-                        lines[i] = winner + "," + ++winnersWins;
-                        break;
-                    }
-                    //If the winners win count could not be read, set it to 1
-                    catch
-                    {
-                        lines[i] = winner + ", 1";
-                        break;
+                        newWinner = false;
+                        string[] values = lines[i].Split(',');
+                        try
+                        {
+                            winnersWins = int.Parse(values[1]);
+                            lines[i] = winner + "," + ++winnersWins;
+                            break;
+                        }
+                        //If the winners win count could not be parsed to an int, set it to 1
+                        catch
+                        {
+                            lines[i] = winner + ", 1";
+                            break;
+                        }
                     }
                 }
-            }
 
-            if (newWinner)
-            // "The winner doesn't have a record yet, so create a new record with 1 win
+                if (newWinner)
+                    // "The winner doesn't have a record yet, so create a new record with 1 win
+                    lines = lines.Append($"{winner}, 1").ToArray();
+
+                // Write updated records back to the CSV file
+                File.WriteAllLines(winHistoryFilePath, lines);
+            }
+            else
             {
-                lines = lines.Append($"{winner}, 1").ToArray();
+                FileStream newHistFile = File.Create(winHistoryFilePath);
+                newHistFile.Close();
             }
-
-            // Write updated records back to the CSV file
-            File.WriteAllLines(winHistoryFilePath, lines);
         }
+
+        static void ShowLeaderboard()
+        {
+            string winHistoryFilePath = "win_history.csv";
+
+            if (File.Exists(winHistoryFilePath))
+            {
+                // Read data from win_history file
+                string[] lines = File.ReadAllLines(winHistoryFilePath);
+
+                // Create a dictionary to store player names and win counts
+                Dictionary<string, int> leaderboard = new Dictionary<string, int>();
+
+                foreach (string line in lines)
+                {
+                    string[] parts = line.Split(',');
+                    if (parts.Length == 2 && int.TryParse(parts[1], out int wins))
+                    {
+                        leaderboard[parts[0]] = wins;
+                    }
+                }
+
+                if (leaderboard.Count != 0)
+                {
+                    // determine the max lengths needed for each section of the leaderboard
+                    int maxNameLength = leaderboard.Keys.Max(key => key.Length) + 2;
+                    int maxRankLength = leaderboard.Count.ToString().Length + 8;
+                    int maxWinCountLength = leaderboard.Values.Max(value => value.ToString().Length);
+
+                    Console.WriteLine("Leaderboard:\n");
+
+                    string rankHeader = "Rank".PadRight(maxRankLength);
+                    string nameHeader = "Name".PadRight(maxNameLength);
+
+                    int rank = 1;
+                    Console.WriteLine($"{rankHeader}{nameHeader}# of wins");
+                    foreach (var entry in leaderboard.OrderByDescending(x => x.Value))
+                    {
+                        Console.WriteLine($"Rank: {rank++.ToString().PadRight(maxRankLength - 6)}{entry.Key.PadRight(maxNameLength)}{entry.Value} win(s)");
+                    }
+                    Console.WriteLine("");
+                }
+                else
+                    Console.WriteLine("Leaderboard is empty");
+            }
+            else
+            {
+                Console.WriteLine("Leaderboard does not exist.");
+            }
+        }
+
     }
 }
